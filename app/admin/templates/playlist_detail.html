@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}{{ playlist.title }}{% endblock %}
+{% block content %}
+  <div class="breadcrumb"><a href="/admin/playlists">← Back to playlists</a></div>
+  <div class="page-header">
+    <div>
+      <h1>{{ playlist.title }}</h1>
+      <h2>by {{ playlist.writer }}</h2>
+    </div>
+    <div class="actions">
+      <a class="btn" href="/admin/playlists/{{ playlist.id }}/edit">Edit Playlist</a>
+      <a class="btn btn-primary" href="/admin/playlists/{{ playlist.id }}/songs/new">+ Add Song</a>
+    </div>
+  </div>
+
+  {% if playlist.description %}
+  <div class="card">
+    <p class="muted" style="margin:0;">{{ playlist.description }}</p>
+  </div>
+  {% endif %}
+
+  <div class="card">
+    <h2 style="margin-bottom:12px;">Songs ({{ songs|length }})</h2>
+    {% if songs %}
+    <table>
+      <thead>
+        <tr>
+          <th>Order</th>
+          <th>Title</th>
+          <th>Artist</th>
+          <th>Video ID</th>
+          <th>Duration</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for song in songs %}
+        <tr>
+          <td>
+            <span class="order-pill">{{ song.sort_order }}</span>
+            <form class="inline" method="post" action="/admin/playlists/{{ playlist.id }}/songs/{{ song.id }}/move">
+              <input type="hidden" name="direction" value="up" />
+              <button class="btn btn-sm" type="submit" title="Move up" {% if loop.first %}disabled{% endif %}>↑</button>
+            </form>
+            <form class="inline" method="post" action="/admin/playlists/{{ playlist.id }}/songs/{{ song.id }}/move">
+              <input type="hidden" name="direction" value="down" />
+              <button class="btn btn-sm" type="submit" title="Move down" {% if loop.last %}disabled{% endif %}>↓</button>
+            </form>
+          </td>
+          <td>{{ song.title }}</td>
+          <td>{{ song.artist }}</td>
+          <td><code>{{ song.video_id }}</code></td>
+          <td>{{ song.duration }}s</td>
+          <td class="actions">
+            <a class="btn btn-sm" href="/admin/playlists/{{ playlist.id }}/songs/{{ song.id }}/edit">Edit</a>
+            <form class="inline" method="post" action="/admin/playlists/{{ playlist.id }}/songs/{{ song.id }}/delete"
+                  onsubmit="return confirm('Delete song \'{{ song.title }}\'?');">
+              <button class="btn btn-sm btn-danger" type="submit">Delete</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty">No songs in this playlist yet.</div>
+    {% endif %}
+  </div>
+{% endblock %}

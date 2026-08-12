@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}{{ "Edit Song" if song else "New Song" }}{% endblock %}
+{% block content %}
+  <div class="breadcrumb"><a href="/admin/playlists/{{ playlist.id }}">← Back to {{ playlist.title }}</a></div>
+  <h1>{{ "Edit Song" if song else "New Song" }}</h1>
+  <div class="card" style="margin-top:16px;">
+    {% if error %}<div class="error-banner">{{ error }}</div>{% endif %}
+    <form method="post" action="{{ form_action }}">
+      <div class="field">
+        <label for="title">Title</label>
+        <input id="title" name="title" type="text" required maxlength="255"
+               value="{{ song.title if song else '' }}" />
+      </div>
+      <div class="field">
+        <label for="artist">Artist</label>
+        <input id="artist" name="artist" type="text" maxlength="255" placeholder="Unknown"
+               value="{{ song.artist if song else '' }}" />
+      </div>
+      <div class="field">
+        <label for="video_id">YouTube Video ID</label>
+        <input id="video_id" name="video_id" type="text" required maxlength="50"
+               placeholder="e.g. GmytqWwPazE"
+               value="{{ song.video_id if song else '' }}" />
+      </div>
+      <div class="field">
+        <label for="duration">Duration (seconds)</label>
+        <input id="duration" name="duration" type="number" min="0" required
+               value="{{ song.duration if song else 0 }}" />
+      </div>
+      <div class="field">
+        <label for="sort_order">Sort Order</label>
+        <input id="sort_order" name="sort_order" type="number" min="0" required
+               value="{{ song.sort_order if song else 0 }}" />
+      </div>
+      <button class="btn btn-primary" type="submit">{{ "Save Changes" if song else "Add Song" }}</button>
+      <a class="btn" href="/admin/playlists/{{ playlist.id }}">Cancel</a>
+    </form>
+  </div>
+{% endblock %}

@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Playlists{% endblock %}
+{% block content %}
+  <div class="page-header">
+    <div>
+      <h1>Playlists</h1>
+      <h2>{{ playlists|length }} total</h2>
+    </div>
+    <a class="btn btn-primary" href="/admin/playlists/new">+ New Playlist</a>
+  </div>
+
+  <div class="card">
+    {% if playlists %}
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Title</th>
+          <th>Writer</th>
+          <th>Songs</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for playlist in playlists %}
+        <tr>
+          <td>{{ playlist.id }}</td>
+          <td><a href="/admin/playlists/{{ playlist.id }}">{{ playlist.title }}</a></td>
+          <td>{{ playlist.writer }}</td>
+          <td>{{ playlist.songs|length }}</td>
+          <td class="actions">
+            <a class="btn btn-sm" href="/admin/playlists/{{ playlist.id }}">View</a>
+            <a class="btn btn-sm" href="/admin/playlists/{{ playlist.id }}/edit">Edit</a>
+            <form class="inline" method="post" action="/admin/playlists/{{ playlist.id }}/delete"
+                  onsubmit="return confirm('Delete playlist \'{{ playlist.title }}\' and all of its songs?');">
+              <button class="btn btn-sm btn-danger" type="submit">Delete</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty">No playlists yet. Create your first one.</div>
+    {% endif %}
+  </div>
+{% endblock %}

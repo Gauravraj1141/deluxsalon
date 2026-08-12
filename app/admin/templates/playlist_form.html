@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}{{ "Edit Playlist" if playlist else "New Playlist" }}{% endblock %}
+{% block content %}
+  <div class="breadcrumb"><a href="/admin/playlists">← Back to playlists</a></div>
+  <h1>{{ "Edit Playlist" if playlist else "New Playlist" }}</h1>
+  <div class="card" style="margin-top:16px;">
+    {% if error %}<div class="error-banner">{{ error }}</div>{% endif %}
+    <form method="post" action="{{ form_action }}">
+      <div class="field">
+        <label for="title">Title</label>
+        <input id="title" name="title" type="text" required maxlength="255"
+               value="{{ playlist.title if playlist else '' }}" />
+      </div>
+      <div class="field">
+        <label for="writer">Writer</label>
+        <input id="writer" name="writer" type="text" required maxlength="255"
+               value="{{ playlist.writer if playlist else '' }}" />
+      </div>
+      <div class="field">
+        <label for="description">Description (optional)</label>
+        <textarea id="description" name="description" rows="4">{{ playlist.description if playlist and playlist.description else '' }}</textarea>
+      </div>
+      <button class="btn btn-primary" type="submit">{{ "Save Changes" if playlist else "Create Playlist" }}</button>
+      <a class="btn" href="/admin/playlists">Cancel</a>
+    </form>
+  </div>
+{% endblock %}
