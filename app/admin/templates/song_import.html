@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Import Songs — {{ playlist.title }}{% endblock %}
+{% block content %}
+  <div class="breadcrumb"><a href="/admin/playlists/{{ playlist.id }}">← Back to {{ playlist.title }}</a></div>
+  <h1>Import Songs</h1>
+  <h2>into {{ playlist.title }}</h2>
+
+  {% if error %}<div class="error-banner">{{ error }}</div>{% endif %}
+
+  <div class="card">
+    <h2 style="margin-bottom:12px;">1. Fetch from a YouTube / YouTube Music playlist URL</h2>
+    <form method="post" action="/admin/playlists/{{ playlist.id }}/songs/import/fetch">
+      <div class="field">
+        <label for="playlist_url">Playlist URL</label>
+        <input id="playlist_url" name="playlist_url" type="url" required
+               placeholder="https://music.youtube.com/playlist?list=..."
+               value="{{ playlist_url }}" />
+      </div>
+      <button class="btn btn-primary" type="submit">Fetch Tracklist</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2 style="margin-bottom:12px;">2. Review and import</h2>
+    <p class="muted" style="margin-top:-6px;">
+      Edit the JSON below if needed, then import. Each entry needs
+      <code>title</code> and <code>video_id</code>; <code>artist</code>, <code>duration</code>
+      (seconds) and <code>sort_order</code> are optional.
+    </p>
+    <form method="post" action="/admin/playlists/{{ playlist.id }}/songs/import">
+      <input type="hidden" name="playlist_url" value="{{ playlist_url }}" />
+      <div class="field">
+        <label for="songs_json">Songs JSON</label>
+        <textarea id="songs_json" name="songs_json" rows="18" required
+                  placeholder='[
+  {
+    "title": "Song title",
+    "artist": "Artist name",
+    "video_id": "dQw4w9WgXcQ",
+    "duration": 213
+  }
+]'
+                  style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size:13px;">{{ songs_json }}</textarea>
+      </div>
+      <button class="btn btn-primary" type="submit">Import Songs</button>
+      <a class="btn" href="/admin/playlists/{{ playlist.id }}">Cancel</a>
+    </form>
+  </div>
+{% endblock %}

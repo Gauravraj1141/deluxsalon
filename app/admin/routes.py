@@ -1,9 +1,10 @@
+import json
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.security import (
@@ -15,6 +16,7 @@ from app.core.security import (
 )
 from app.db.database import get_db
 from app.db.models import Playlist, Song
+from app.services.youtube import PlaylistFetchError, fetch_playlist_songs
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -275,6 +277,158 @@ def create_song(
         sort_order=sort_order,
     )
     db.add(song)
+    db.commit()
+    return RedirectResponse(url=f"/admin/playlists/{playlist_id}", status_code=303)
+
+
+@router.get("/playlists/{playlist_id}/songs/import")
+def import_songs_form(
+    request: Request,
+    playlist_id: int,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    playlist = db.get(Playlist, playlist_id)
+    if playlist is None:
+        return RedirectResponse(url="/admin/playlists", status_code=303)
+    return templates.TemplateResponse(
+        request,
+        "song_import.html",
+        {"playlist": playlist, "error": None, "playlist_url": "", "songs_json": ""},
+    )
+
+
+@router.post("/playlists/{playlist_id}/songs/import/fetch")
+def fetch_songs_from_url(
+    request: Request,
+    playlist_id: int,
+    playlist_url: str = Form(...),
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    playlist = db.get(Playlist, playlist_id)
+    if playlist is None:
+        return RedirectResponse(url="/admin/playlists", status_code=303)
+
+    playlist_url = playlist_url.strip()
+    try:
+        songs = fetch_playlist_songs(playlist_url)
+    except PlaylistFetchError as exc:
+        return templates.TemplateResponse(
+            request,
+            "song_import.html",
+            {
+                "playlist": playlist,
+                "error": f"Couldn't fetch that playlist: {exc}",
+                "playlist_url": playlist_url,
+                "songs_json": "",
+            },
+            status_code=400,
+        )
+
+    return templates.TemplateResponse(
+        request,
+        "song_import.html",
+        {
+            "playlist": playlist,
+            "error": None,
+            "playlist_url": playlist_url,
+            "songs_json": json.dumps(songs, indent=2, ensure_ascii=False),
+        },
+    )
+
+
+@router.post("/playlists/{playlist_id}/songs/import")
+def import_songs(
+    request: Request,
+    playlist_id: int,
+    songs_json: str = Form(...),
+    playlist_url: str = Form(""),
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin),
+):
+    playlist = db.get(Playlist, playlist_id)
+    if playlist is None:
+        return RedirectResponse(url="/admin/playlists", status_code=303)
+
+    def render_error(message: str, status_code: int = 400):
+        return templates.TemplateResponse(
+            request,
+            "song_import.html",
+            {
+                "playlist": playlist,
+                "error": message,
+                "playlist_url": playlist_url,
+                "songs_json": songs_json,
+            },
+            status_code=status_code,
+        )
+
+    try:
+        data = json.loads(songs_json)
+    except json.JSONDecodeError as exc:
+        return render_error(f"Invalid JSON: {exc}")
+
+    if not isinstance(data, list) or not data:
+        return render_error("JSON must be a non-empty array of song objects.")
+
+    next_sort_order = (
+        db.execute(
+            select(func.coalesce(func.max(Song.sort_order), 0)).where(
+                Song.playlist_id == playlist_id
+            )
+        ).scalar()
+        or 0
+    ) + 1
+
+    songs_to_create = []
+    errors = []
+    for index, item in enumerate(data):
+        label = f"Song {index + 1}"
+        if not isinstance(item, dict):
+            errors.append(f"{label}: must be a JSON object.")
+            continue
+
+        title = str(item.get("title") or "").strip()
+        video_id = str(item.get("video_id") or "").strip()
+        artist = str(item.get("artist") or "").strip() or "Unknown"
+        duration = item.get("duration", 0)
+
+        if not title or not video_id:
+            errors.append(f"{label}: 'title' and 'video_id' are required.")
+            continue
+        try:
+            duration = int(duration)
+        except (TypeError, ValueError):
+            errors.append(f"{label}: 'duration' must be a number.")
+            continue
+        if duration < 0:
+            errors.append(f"{label}: 'duration' must not be negative.")
+            continue
+
+        sort_order = item.get("sort_order")
+        try:
+            sort_order = int(sort_order) if sort_order is not None else next_sort_order
+        except (TypeError, ValueError):
+            errors.append(f"{label}: 'sort_order' must be a number.")
+            continue
+        next_sort_order = max(next_sort_order, sort_order + 1)
+
+        songs_to_create.append(
+            Song(
+                playlist_id=playlist_id,
+                title=title,
+                artist=artist,
+                video_id=video_id,
+                duration=duration,
+                sort_order=sort_order,
+            )
+        )
+
+    if errors:
+        return render_error(" ".join(errors))
+
+    db.add_all(songs_to_create)
     db.commit()
     return RedirectResponse(url=f"/admin/playlists/{playlist_id}", status_code=303)
 

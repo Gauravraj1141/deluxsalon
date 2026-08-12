@@ -1,3 +1,6 @@
+import json
+
+
 def test_login_rejects_invalid_credentials(client):
     response = client.post(
         "/admin/login",
@@ -94,6 +97,60 @@ def test_create_update_delete_song(admin_client):
         f"/admin/playlists/{playlist_id}/songs/{song_id}/delete", follow_redirects=False
     )
     assert response.status_code == 303
+
+    songs = admin_client.get(f"/api/v1/playlists/{playlist_id}/songs").json()
+    assert songs == []
+
+
+def test_import_songs_from_json(admin_client):
+    response = admin_client.post(
+        "/admin/playlists/new",
+        data={"title": "Imported Playlist", "writer": "Me", "description": ""},
+        follow_redirects=False,
+    )
+    playlist_id = int(response.headers["location"].rsplit("/", 1)[-1])
+
+    songs_json = json.dumps(
+        [
+            {"title": "Song One", "artist": "Artist A", "video_id": "aaa111", "duration": 200},
+            {"title": "Song Two", "video_id": "bbb222", "duration": 180, "sort_order": 5},
+        ]
+    )
+    response = admin_client.post(
+        f"/admin/playlists/{playlist_id}/songs/import",
+        data={"songs_json": songs_json},
+        follow_redirects=False,
+    )
+    assert response.status_code == 303
+
+    songs = admin_client.get(f"/api/v1/playlists/{playlist_id}/songs").json()
+    assert len(songs) == 2
+    titles = {s["title"] for s in songs}
+    assert titles == {"Song One", "Song Two"}
+    assert next(s for s in songs if s["title"] == "Song Two")["artist"] == "Unknown"
+
+
+def test_import_songs_rejects_invalid_json(admin_client):
+    response = admin_client.post(
+        "/admin/playlists/new",
+        data={"title": "Broken Import", "writer": "Me", "description": ""},
+        follow_redirects=False,
+    )
+    playlist_id = int(response.headers["location"].rsplit("/", 1)[-1])
+
+    response = admin_client.post(
+        f"/admin/playlists/{playlist_id}/songs/import",
+        data={"songs_json": "not json"},
+        follow_redirects=False,
+    )
+    assert response.status_code == 400
+
+    response = admin_client.post(
+        f"/admin/playlists/{playlist_id}/songs/import",
+        data={"songs_json": json.dumps([{"artist": "No title or video id"}])},
+        follow_redirects=False,
+    )
+    assert response.status_code == 400
 
     songs = admin_client.get(f"/api/v1/playlists/{playlist_id}/songs").json()
     assert songs == []
