@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
 from app.admin.routes import router as admin_router
@@ -16,6 +17,14 @@ app.add_middleware(
     secret_key=settings.SECRET_KEY,
     session_cookie="admin_session",
     https_only=settings.is_production,
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.CORS_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 app.include_router(playlists.router)

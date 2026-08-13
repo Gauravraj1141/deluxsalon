@@ -14,6 +14,12 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "change-this-secret-key"
     APP_ENV: str = "development"
 
+    CORS_ORIGINS: list[str] = [
+        "https://deluxesalonsongs.com",
+        "https://www.deluxesalonsongs.com",
+        "http://localhost:3000",
+    ]
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     @property
