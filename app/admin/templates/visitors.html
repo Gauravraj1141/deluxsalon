@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Visitors{% endblock %}
+{% block content %}
+  <div class="page-header">
+    <div>
+      <h1>Visitors</h1>
+      <h2>{{ total_count }} total, ever</h2>
+    </div>
+  </div>
+
+  <div class="card" style="display: flex; gap: 40px; flex-wrap: wrap;">
+    <div>
+      <div class="muted">Listening now</div>
+      <div style="font-size: 28px; font-weight: 600;">
+        <span class="inline-block" style="display:inline-block; width:8px; height:8px; border-radius:999px; background:#3fce6e; margin-right:6px;"></span>
+        {{ live_count }}
+      </div>
+    </div>
+    <div>
+      <div class="muted">Total ever seen</div>
+      <div style="font-size: 28px; font-weight: 600;">{{ total_count }}</div>
+    </div>
+  </div>
+
+  <p class="muted">
+    "Listening now" = distinct anonymous visitors with a heartbeat in the last
+    {{ active_window_seconds }} seconds. Visitors are identified only by a random,
+    non-identifying cookie (no name, email, IP, or other personal data is collected).
+  </p>
+
+  <div class="card">
+    {% if visitors %}
+    <table>
+      <thead>
+        <tr>
+          <th>Visitor ID</th>
+          <th>Status</th>
+          <th>First seen</th>
+          <th>Last seen</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for visitor in visitors %}
+        <tr>
+          <td><code>{{ visitor.id }}</code></td>
+          <td>
+            {% if visitor.last_seen >= cutoff %}
+              <span style="color:#3fce6e;">● online</span>
+            {% else %}
+              <span class="muted">offline</span>
+            {% endif %}
+          </td>
+          <td>{{ visitor.first_seen.strftime("%Y-%m-%d %H:%M:%S") }} UTC</td>
+          <td>{{ visitor.last_seen.strftime("%Y-%m-%d %H:%M:%S") }} UTC</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty">No visitors recorded yet.</div>
+    {% endif %}
+  </div>
+{% endblock %}

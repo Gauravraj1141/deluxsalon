@@ -8,6 +8,17 @@ from app.db.models import Visitor
 ACTIVE_WINDOW = timedelta(seconds=60)
 
 
+def _live_cutoff() -> datetime:
+    return datetime.now(timezone.utc).replace(tzinfo=None) - ACTIVE_WINDOW
+
+
+def get_live_count(db: Session) -> int:
+    """Return how many distinct visitors have sent a heartbeat in the last 60 seconds."""
+    return db.execute(
+        select(func.count()).select_from(Visitor).where(Visitor.last_seen >= _live_cutoff())
+    ).scalar_one()
+
+
 def record_heartbeat(db: Session, visitor_id: str) -> int:
     """Mark visitor_id as active now and return the current "listening now" count."""
     now = datetime.now(timezone.utc).replace(tzinfo=None)
@@ -18,7 +29,4 @@ def record_heartbeat(db: Session, visitor_id: str) -> int:
         visitor.last_seen = now
     db.commit()
 
-    cutoff = now - ACTIVE_WINDOW
-    return db.execute(
-        select(func.count()).select_from(Visitor).where(Visitor.last_seen >= cutoff)
-    ).scalar_one()
+    return get_live_count(db)

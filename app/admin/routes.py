@@ -1,4 +1,5 @@
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, Form, Request
@@ -16,7 +17,8 @@ from app.core.security import (
     verify_admin_credentials,
 )
 from app.db.database import get_db
-from app.db.models import Playlist, Song
+from app.db.models import Playlist, Song, Visitor
+from app.services.presence import ACTIVE_WINDOW, get_live_count
 from app.services.youtube import PlaylistFetchError, fetch_playlist_songs
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -56,6 +58,30 @@ def logout(request: Request):
 @router.get("")
 def admin_root(_: None = Depends(require_admin)):
     return RedirectResponse(url="/admin/playlists", status_code=303)
+
+
+# ---------------------------------------------------------------------------
+# Visitors
+# ---------------------------------------------------------------------------
+
+
+@router.get("/visitors")
+def list_visitors(
+    request: Request, db: Session = Depends(get_db), _: None = Depends(require_admin)
+):
+    cutoff = datetime.now(timezone.utc).replace(tzinfo=None) - ACTIVE_WINDOW
+    visitors = db.execute(select(Visitor).order_by(Visitor.last_seen.desc())).scalars().all()
+    return templates.TemplateResponse(
+        request,
+        "visitors.html",
+        {
+            "visitors": visitors,
+            "cutoff": cutoff,
+            "live_count": get_live_count(db),
+            "total_count": len(visitors),
+            "active_window_seconds": int(ACTIVE_WINDOW.total_seconds()),
+        },
+    )
 
 
 # ---------------------------------------------------------------------------
