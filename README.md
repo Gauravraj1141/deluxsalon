@@ -221,9 +221,13 @@ VPS
 1. On the VPS, create a `docker-compose.yml` based on this repo's, but:
    - Pull the built image instead of building locally: `image: ghcr.io/<owner>/<repo>:latest`
      (add `docker login ghcr.io` first if the package is private).
-   - Either drop the `ports: ["8000:8000"]` mapping on `backend` (if Caddy joins the same Docker
-     network and reaches it at `backend:8000`), or keep it bound to localhost only
-     (`127.0.0.1:8000:8000`) if Caddy runs outside Docker.
+   - If Caddy joins the same Docker network and reaches the backend at `backend:8000`, drop the
+     `ports` mapping entirely. Otherwise (Caddy running outside Docker, as below) keep it bound to
+     localhost only — this repo's `docker-compose.yml` already does this
+     (`127.0.0.1:8000:8000`). **Never publish 8000 to `0.0.0.0`**: uvicorn is started with
+     `--forwarded-allow-ips=*` (see `Dockerfile`) so it trusts `X-Forwarded-For` from whoever can
+     reach it, which is only safe because that's Caddy on localhost. Exposing the port publicly
+     would let anyone spoof their IP and bypass per-visitor rate limiting.
 2. Add Caddy as a service on the same Docker network (or run it separately and attach it to this
    compose network), with a `Caddyfile` like:
 

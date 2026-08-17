@@ -26,7 +26,11 @@ services:
       postgres:
         condition: service_healthy
     ports:
-      - "8000:8000"
+      # Bound to localhost only - Caddy (on the same VPS) proxies to this port.
+      # Never expose 8000 to the public internet directly: uvicorn is configured
+      # to trust X-Forwarded-For from any peer that can reach it (see Dockerfile),
+      # which would let an internet client spoof its IP for rate limiting otherwise.
+      - "127.0.0.1:8000:8000"
 
 volumes:
   postgres_data:
