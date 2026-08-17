@@ -1,8 +1,9 @@
 # Music Playlist Backend
 
-A small, production-ready FastAPI backend for a music playlist app: two public read APIs for the
-frontend, a session-authenticated admin panel for managing playlists/songs, PostgreSQL storage via
-SQLAlchemy + Alembic, and Docker/GitHub Actions for shipping to GHCR.
+A small, production-ready FastAPI backend for a music playlist app: public read APIs for the
+frontend (playlists, songs, an anonymous listener-presence heartbeat), a session-authenticated
+admin panel for managing playlists/songs, PostgreSQL storage via SQLAlchemy + Alembic, per-IP rate
+limiting on all endpoints, and Docker/GitHub Actions for shipping to GHCR.
 
 ## Project structure
 
@@ -11,21 +12,26 @@ app/
 ├── main.py                  # FastAPI app, middleware, router wiring, /health
 ├── core/
 │   ├── config.py            # Settings loaded from environment / .env
-│   └── security.py          # Admin credential check + session auth dependency
+│   ├── security.py          # Admin credential check + session auth dependency
+│   ├── limiter.py           # Per-IP rate limiter (slowapi), default 60/minute
+│   └── visitor.py           # Anonymous visitor-id cookie (no identity, just a random token)
 ├── db/
 │   ├── database.py          # Engine, session factory, get_db dependency
-│   └── models.py            # Playlist, Song SQLAlchemy models
+│   └── models.py            # Playlist, Song, Visitor SQLAlchemy models
 ├── schemas/
 │   ├── playlist.py          # Pydantic schemas for playlists
-│   └── song.py               # Pydantic schemas for songs (videoId alias, str id, color)
+│   ├── song.py               # Pydantic schemas for songs (videoId alias, str id, color)
+│   └── presence.py          # Pydantic schema for the heartbeat response
 ├── api/routes/
 │   ├── playlists.py         # GET /api/v1/playlists
-│   └── songs.py              # GET /api/v1/playlists/{id}/songs
+│   ├── songs.py              # GET /api/v1/playlists/{id}/songs
+│   └── presence.py          # POST /api/v1/presence/heartbeat (10/minute)
 ├── admin/
-│   ├── routes.py            # Admin auth + playlist/song CRUD routes
+│   ├── routes.py            # Admin auth (5/minute login limit) + playlist/song CRUD routes
 │   └── templates/           # Jinja2 templates for the admin UI
 └── services/
-    └── color.py             # Random hex color generator
+    ├── color.py             # Random hex color generator
+    └── presence.py          # Heartbeat upsert + "listening now" count query
 
 alembic/                     # Migrations (env.py, versions/)
 alembic.ini
@@ -110,7 +116,11 @@ requiring login, and playlist/song create/update/delete.
 | ------ | -------------------------------------- | ---------------------------------------------- |
 | GET    | `/api/v1/playlists`                    | List all playlists (`id`, `title`, `writer`)  |
 | GET    | `/api/v1/playlists/{playlist_id}/songs` | Songs in a playlist, ordered by `sort_order`  |
+| POST   | `/api/v1/presence/heartbeat`           | Anonymous listener heartbeat → `{"count": n}` "listening now" (rate limited to 10/minute) |
 | GET    | `/health`                              | Health check — `{"status": "ok"}`             |
+
+All endpoints are rate limited per IP (default 60/minute, tighter limits noted above and on
+`/admin/login`); exceeding the limit returns `429 Too Many Requests`.
 
 Example song response:
 

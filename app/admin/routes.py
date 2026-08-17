@@ -7,6 +7,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.core.limiter import limiter
 from app.core.security import (
     is_admin_logged_in,
     login_admin,
@@ -36,6 +37,7 @@ def login_form(request: Request):
 
 
 @router.post("/login")
+@limiter.limit("5/minute")
 def login_submit(request: Request, username: str = Form(...), password: str = Form(...)):
     if verify_admin_credentials(username, password):
         login_admin(request)

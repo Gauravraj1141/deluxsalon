@@ -44,3 +44,17 @@ class Song(Base):
     )
 
     playlist: Mapped["Playlist"] = relationship(back_populates="songs")
+
+
+class Visitor(Base):
+    """An anonymous listener, identified only by a random cookie value.
+
+    Carries no personal data - just enough to de-duplicate heartbeats so the
+    "listening now" count reflects distinct clients rather than raw requests.
+    """
+
+    __tablename__ = "visitors"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    first_seen: Mapped[datetime] = mapped_column(nullable=False)
+    last_seen: Mapped[datetime] = mapped_column(nullable=False, index=True)

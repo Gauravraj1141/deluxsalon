@@ -5,6 +5,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.core import security
+from app.core.limiter import limiter
 from app.db.database import Base, get_db
 from app.main import app
 
@@ -49,6 +50,7 @@ def client(test_engine):
     app.dependency_overrides[get_db] = override_get_db
     security.settings.ADMIN_USERNAME = ADMIN_USERNAME
     security.settings.ADMIN_PASSWORD = ADMIN_PASSWORD
+    limiter.reset()
 
     with TestClient(app) as test_client:
         yield test_client
