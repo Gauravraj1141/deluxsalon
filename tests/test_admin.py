@@ -154,3 +154,39 @@ def test_import_songs_rejects_invalid_json(admin_client):
 
     songs = admin_client.get(f"/api/v1/playlists/{playlist_id}/songs").json()
     assert songs == []
+
+
+def test_delete_all_songs_in_playlist(admin_client):
+    response = admin_client.post(
+        "/admin/playlists/new",
+        data={"title": "Bulk Delete Playlist", "writer": "Me", "description": ""},
+        follow_redirects=False,
+    )
+    playlist_id = int(response.headers["location"].rsplit("/", 1)[-1])
+
+    for index in range(3):
+        admin_client.post(
+            f"/admin/playlists/{playlist_id}/songs/new",
+            data={
+                "title": f"Song {index}",
+                "artist": "",
+                "video_id": f"vid{index}",
+                "duration": 100,
+                "sort_order": index,
+            },
+            follow_redirects=False,
+        )
+
+    assert len(admin_client.get(f"/api/v1/playlists/{playlist_id}/songs").json()) == 3
+
+    response = admin_client.get(f"/admin/playlists/{playlist_id}")
+    assert "Delete All Songs" in response.text
+
+    response = admin_client.post(
+        f"/admin/playlists/{playlist_id}/songs/delete-all", follow_redirects=False
+    )
+    assert response.status_code == 303
+    assert response.headers["location"] == f"/admin/playlists/{playlist_id}"
+
+    assert admin_client.get(f"/api/v1/playlists/{playlist_id}/songs").json() == []
+    assert admin_client.get(f"/admin/playlists/{playlist_id}").status_code == 200

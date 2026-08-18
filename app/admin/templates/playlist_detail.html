@@ -21,7 +21,17 @@
   {% endif %}
 
   <div class="card">
-    <h2 style="margin-bottom:12px;">Songs ({{ songs|length }})</h2>
+    <div class="page-header" style="margin-bottom:12px;">
+      <h2 style="margin:0;">Songs ({{ songs|length }})</h2>
+      {% if songs %}
+      <div class="actions">
+        <form class="inline" method="post" action="/admin/playlists/{{ playlist.id }}/songs/delete-all"
+              onsubmit="return confirm('Delete all {{ songs|length }} songs from \'{{ playlist.title }}\'? This cannot be undone.');">
+          <button class="btn btn-sm btn-danger" type="submit">Delete All Songs</button>
+        </form>
+      </div>
+      {% endif %}
+    </div>
     {% if songs %}
     <table>
       <thead>

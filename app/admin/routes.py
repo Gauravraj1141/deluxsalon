@@ -548,6 +548,21 @@ def delete_song(
     return RedirectResponse(url=f"/admin/playlists/{playlist_id}", status_code=303)
 
 
+@router.post("/playlists/{playlist_id}/songs/delete-all")
+def delete_all_songs(
+    playlist_id: int, db: Session = Depends(get_db), _: None = Depends(require_admin)
+):
+    playlist = db.get(Playlist, playlist_id)
+    if playlist is not None:
+        songs = (
+            db.execute(select(Song).where(Song.playlist_id == playlist_id)).scalars().all()
+        )
+        for song in songs:
+            db.delete(song)
+        db.commit()
+    return RedirectResponse(url=f"/admin/playlists/{playlist_id}", status_code=303)
+
+
 @router.post("/playlists/{playlist_id}/songs/{song_id}/move")
 def move_song(
     playlist_id: int,
